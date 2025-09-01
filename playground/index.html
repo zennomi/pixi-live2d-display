@@ -1,33 +1,61 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Playground</title>
-  <style>
-      * {
-          box-sizing: border-box;
-          margin: 0;
-          padding: 0;
-      }
+    <head>
+        <meta charset="UTF-8" />
+        <title>Playground</title>
+        <style>
+            * {
+                box-sizing: border-box;
+                margin: 0;
+                padding: 0;
+            }
 
-      #canvas {
-          position: absolute;
-      }
+            #canvas {
+                position: absolute;
+            }
 
-      #control {
-          position: absolute;
-          top: 8px;
-          left: 24px;
-          color: #fff;
-          font-size: 18px;
-      }
-  </style>
-</head>
-<body>
-<canvas id="canvas"></canvas>
-<div id="control"></div>
-<script src="/core/live2d.min.js"></script>
-<script src="/core/live2dcubismcore.js"></script>
-<script src="/playground/index.ts" type="module"></script>
-</body>
+            #control {
+                position: absolute;
+                top: 8px;
+                left: 24px;
+                color: #fff;
+                font-size: 18px;
+                z-index: 1000;
+            }
+
+            #control button {
+                transition: all 0.2s ease;
+            }
+
+            #control button:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            }
+
+            #control button:active {
+                transform: translateY(0);
+            }
+
+            #control hr {
+                border: none;
+                height: 1px;
+                background: linear-gradient(to right, transparent, #666, transparent);
+                margin: 20px 0;
+            }
+
+            #control h3 {
+                margin: 15px 0 10px 0;
+                color: #fff;
+                font-size: 16px;
+                text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+            }
+        </style>
+    </head>
+    <body>
+        <canvas id="canvas"></canvas>
+        <div id="control"></div>
+        <script src="/core/live2d.min.js"></script>
+        <script src="/core/live2dcubismcore.js"></script>
+        <script src="/playground/index.ts" type="module"></script>
+    </body>
 </html>
