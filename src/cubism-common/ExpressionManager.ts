@@ -145,22 +145,23 @@ export abstract class ExpressionManager<
      * Resets model's expression using {@link ExpressionManager#defaultExpression}.
      */
     resetExpression(): void {
-        this._setExpression(this.defaultExpression);
+        this.setExpression(-1);
     }
 
     /**
      * Restores model's expression to {@link currentExpression}.
      */
     restoreExpression(): void {
-        this._setExpression(this.currentExpression);
+        const index = this.expressions.indexOf(this.currentExpression);
+        this.setExpression(index);
     }
 
     /**
-     * Sets an Expression.
-     * @param index - Either the index, or the name of the expression.
-     * @return Promise that resolves with true if succeeded, with false otherwise.
+     * Unsets a specific expression by index or name.
+     * @param index - Either the index, or the name of the expression to unset
+     * @return true if the expression was successfully unset, false otherwise
      */
-    async setExpression(index: number | string): Promise<boolean> {
+    async unsetExpression(index: number | string): Promise<boolean> {
         if (typeof index !== "number") {
             index = this.getExpressionIndex(index);
         }
@@ -169,21 +170,59 @@ export abstract class ExpressionManager<
             return false;
         }
 
-        if (index === this.expressions.indexOf(this.currentExpression)) {
+        const success = this._unsetExpression(index);
+
+        // If this was the current expression, reset the state
+        if (success && this.expressions[index] === this.currentExpression) {
+            this.currentExpression = this.defaultExpression;
+        }
+
+        return success;
+    }
+
+    /**
+     * Sets an Expression.
+     * @param index - Either the index, or the name of the expression. -1 is the default expression.
+     * @param overlapping - Whether to allow overlapping expression.
+     * @return Promise that resolves with true if succeeded, with false otherwise.
+     */
+    async setExpression(index: number | string, overlapping?: boolean): Promise<boolean> {
+        if (typeof index !== "number") {
+            index = this.getExpressionIndex(index);
+        }
+
+        if (!(index > -2 && index < this.definitions.length)) {
             return false;
         }
 
-        this.reserveExpressionIndex = index;
+        const expression =
+            index === -1
+                ? this.defaultExpression
+                : this.expressions[index] || (await this.loadExpression(index));
 
-        const expression = await this.loadExpression(index);
+        if (!overlapping) {
+            const currentExpressionIndex = this.expressions.indexOf(this.currentExpression);
+            if (index === currentExpressionIndex) {
+                return false;
+            }
 
-        if (!expression || this.reserveExpressionIndex !== index) {
+            this._unsetExpression(currentExpressionIndex);
+
+            this.reserveExpressionIndex = index;
+
+            if (!expression || this.reserveExpressionIndex !== index) {
+                return false;
+            }
+
+            this.reserveExpressionIndex = -1;
+            this.currentExpression = expression;
+        }
+
+        if (!expression) {
             return false;
         }
 
-        this.reserveExpressionIndex = -1;
-        this.currentExpression = expression;
-        this._setExpression(expression);
+        this._setExpression(expression, overlapping);
 
         return true;
     }
@@ -240,8 +279,18 @@ export abstract class ExpressionManager<
 
     /**
      * Applies the Expression to the model.
+     * @param motion - The Expression to apply.
+     * @param overlapping - Whether to allow overlapping.
+     * @return The handle of the Expression.
      */
-    protected abstract _setExpression(motion: Expression): number;
+    protected abstract _setExpression(motion: Expression, overlapping?: boolean): number;
+
+    /**
+     * Fades out a specific expression by index.
+     * @param index - Index of the expression to fade out
+     * @return true if the expression was successfully faded out, false otherwise
+     */
+    protected abstract _unsetExpression(index: number): boolean;
 
     /**
      * Cancels expression playback.

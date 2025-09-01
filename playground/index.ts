@@ -129,7 +129,6 @@ function addExpressionButtons(model: Live2DModel) {
         });
 
         expressionManager.definitions.forEach((expression, index) => {
-            console.log(expression);
             const button = document.createElement("button");
             button.id = `expr-${index}`;
             button.style.margin = "5px";
@@ -153,6 +152,40 @@ function addExpressionButtons(model: Live2DModel) {
 
                 // Apply the expression
                 model.expression(index);
+                updateExpressionStatus(expression.Name);
+
+                // Visual feedback - change button color temporarily
+                button.style.background = "#FF9800";
+                setTimeout(() => {
+                    button.style.background = "#4CAF50";
+                }, 500);
+            });
+        });
+
+        expressionManager.definitions.forEach((expression, index) => {
+            const button = document.createElement("button");
+            button.id = `expr-${index}`;
+            button.style.margin = "5px";
+            button.style.padding = "8px 16px";
+            button.style.background = "#4CAF50";
+            button.style.color = "white";
+            button.style.border = "none";
+            button.style.borderRadius = "4px";
+            button.style.cursor = "pointer";
+            button.style.fontSize = "14px";
+            button.textContent = `${expression.Name || `Expression ${index}`} (Overlapping)`;
+            controlDiv.appendChild(button);
+
+            button.addEventListener("click", () => {
+                // Stop the play all sequence if it's running
+                if (isPlayingAll) {
+                    isPlayingAll = false;
+                    playAllButton.style.background = "#9C27B0";
+                    playAllButton.textContent = "🎭 Play All Expressions";
+                }
+
+                // Apply the expression
+                model.expression(index, true);
                 updateExpressionStatus(expression.Name);
 
                 // Visual feedback - change button color temporarily
@@ -195,7 +228,88 @@ function addExpressionButtons(model: Live2DModel) {
             }, 500);
         });
 
-        // Add a "Reset Expression" button
+        // Add unset buttons for each expression
+        const unsetHeader = document.createElement("h4");
+        unsetHeader.style.margin = "15px 0 10px 0";
+        unsetHeader.style.color = "#fff";
+        unsetHeader.style.fontSize = "16px";
+        unsetHeader.textContent = "Unset Specific Expressions:";
+        controlDiv.appendChild(unsetHeader);
+
+        expressionManager.definitions.forEach((expression, index) => {
+            const unsetButton = document.createElement("button");
+            unsetButton.id = `expr-unset-${index}`;
+            unsetButton.style.margin = "5px";
+            unsetButton.style.padding = "6px 12px";
+            unsetButton.style.background = "#E91E63";
+            unsetButton.style.color = "white";
+            unsetButton.style.border = "none";
+            unsetButton.style.borderRadius = "4px";
+            unsetButton.style.cursor = "pointer";
+            unsetButton.style.fontSize = "12px";
+            unsetButton.textContent = `❌ ${expression.Name || `Expr ${index}`}`;
+            controlDiv.appendChild(unsetButton);
+
+            unsetButton.addEventListener("click", async () => {
+                // Stop the play all sequence if it's running
+                if (isPlayingAll) {
+                    isPlayingAll = false;
+                    playAllButton.style.background = "#9C27B0";
+                    playAllButton.textContent = "🎭 Play All Expressions";
+                }
+
+                // Unset the specific expression
+                if (expressionManager) {
+                    const success = await expressionManager.unsetExpression(index);
+                    if (success) {
+                        updateExpressionStatus(
+                            `${expression.Name || `Expression ${index}`} fading out...`,
+                        );
+                    } else {
+                        updateExpressionStatus(
+                            `${expression.Name || `Expression ${index}`} not found or inactive`,
+                        );
+                    }
+                }
+
+                // Visual feedback
+                unsetButton.style.background = "#FF9800";
+                setTimeout(() => {
+                    unsetButton.style.background = "#E91E63";
+                }, 500);
+            });
+        });
+
+        // Add a "Reset Current Expression" button
+        const resetCurrentButton = document.createElement("button");
+        resetCurrentButton.id = "expr-reset-current";
+        resetCurrentButton.style.margin = "5px";
+        resetCurrentButton.style.padding = "8px 16px";
+        resetCurrentButton.style.background = "#f44336";
+        resetCurrentButton.style.color = "white";
+        resetCurrentButton.style.border = "none";
+        resetCurrentButton.style.borderRadius = "4px";
+        resetCurrentButton.style.cursor = "pointer";
+        resetCurrentButton.style.fontSize = "14px";
+        resetCurrentButton.textContent = "🔄 Reset Current Expression";
+        controlDiv.appendChild(resetCurrentButton);
+
+        resetCurrentButton.addEventListener("click", () => {
+            // Stop the play all sequence if it's running
+            if (isPlayingAll) {
+                isPlayingAll = false;
+                playAllButton.style.background = "#9C27B0";
+                playAllButton.textContent = "🎭 Play All Expressions";
+            }
+
+            // Reset the current expression
+            if (expressionManager) {
+                expressionManager.resetExpression();
+            }
+            updateExpressionStatus("Default");
+        });
+
+        // Add a "Reset All Expression" button
         const resetButton = document.createElement("button");
         resetButton.id = "expr-reset";
         resetButton.style.margin = "5px";
@@ -206,7 +320,7 @@ function addExpressionButtons(model: Live2DModel) {
         resetButton.style.borderRadius = "4px";
         resetButton.style.cursor = "pointer";
         resetButton.style.fontSize = "14px";
-        resetButton.textContent = "🔄 Reset Expression";
+        resetButton.textContent = "🔄 Reset All Expressions";
         controlDiv.appendChild(resetButton);
 
         resetButton.addEventListener("click", () => {

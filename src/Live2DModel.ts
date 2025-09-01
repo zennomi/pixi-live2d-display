@@ -170,11 +170,11 @@ export class Live2DModel<IM extends InternalModel = InternalModel> extends Conta
      * @param id - Either the index, or the name of the expression. If not presented, a random expression will be set.
      * @return Promise that resolves with true if succeeded, with false otherwise.
      */
-    expression(id?: number | string): Promise<boolean> {
+    expression(id?: number | string, overlapping?: boolean): Promise<boolean> {
         if (this.internalModel.motionManager.expressionManager) {
             return id === undefined
                 ? this.internalModel.motionManager.expressionManager.setRandomExpression()
-                : this.internalModel.motionManager.expressionManager.setExpression(id);
+                : this.internalModel.motionManager.expressionManager.setExpression(id, overlapping);
         }
         return Promise.resolve(false);
     }
