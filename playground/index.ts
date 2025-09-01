@@ -195,6 +195,54 @@ function addExpressionButtons(model: Live2DModel) {
             }, 500);
         });
 
+        // Add unset buttons for each expression
+        const unsetHeader = document.createElement("h4");
+        unsetHeader.style.margin = "15px 0 10px 0";
+        unsetHeader.style.color = "#fff";
+        unsetHeader.style.fontSize = "16px";
+        unsetHeader.textContent = "Unset Specific Expressions:";
+        controlDiv.appendChild(unsetHeader);
+
+        expressionManager.definitions.forEach((expression, index) => {
+            const unsetButton = document.createElement("button");
+            unsetButton.id = `expr-unset-${index}`;
+            unsetButton.style.margin = "5px";
+            unsetButton.style.padding = "6px 12px";
+            unsetButton.style.background = "#E91E63";
+            unsetButton.style.color = "white";
+            unsetButton.style.border = "none";
+            unsetButton.style.borderRadius = "4px";
+            unsetButton.style.cursor = "pointer";
+            unsetButton.style.fontSize = "12px";
+            unsetButton.textContent = `❌ ${expression.Name || `Expr ${index}`}`;
+            controlDiv.appendChild(unsetButton);
+
+            unsetButton.addEventListener("click", async () => {
+                // Stop the play all sequence if it's running
+                if (isPlayingAll) {
+                    isPlayingAll = false;
+                    playAllButton.style.background = "#9C27B0";
+                    playAllButton.textContent = "🎭 Play All Expressions";
+                }
+
+                // Unset the specific expression
+                if (expressionManager) {
+                    const success = await expressionManager.unsetSpecificExpression(index);
+                    if (success) {
+                        updateExpressionStatus(`${expression.Name || `Expression ${index}`} fading out...`);
+                    } else {
+                        updateExpressionStatus(`${expression.Name || `Expression ${index}`} not found or inactive`);
+                    }
+                }
+
+                // Visual feedback
+                unsetButton.style.background = "#FF9800";
+                setTimeout(() => {
+                    unsetButton.style.background = "#E91E63";
+                }, 500);
+            });
+        });
+
         // Add a "Reset Expression" button
         const resetButton = document.createElement("button");
         resetButton.id = "expr-reset";

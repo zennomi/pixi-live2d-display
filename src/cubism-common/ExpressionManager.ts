@@ -52,6 +52,11 @@ export abstract class ExpressionManager<
     reserveExpressionIndex = -1;
 
     /**
+     * Current expression motion handle for tracking active expressions.
+     */
+    currentExpressionHandle: number = -1;
+
+    /**
      * Flags the instance has been destroyed.
      */
     destroyed = false;
@@ -145,14 +150,58 @@ export abstract class ExpressionManager<
      * Resets model's expression using {@link ExpressionManager#defaultExpression}.
      */
     resetExpression(): void {
-        this._setExpression(this.defaultExpression);
+        this.currentExpressionHandle = this._setExpression(this.defaultExpression);
+        this.currentExpression = this.defaultExpression;
     }
 
     /**
      * Restores model's expression to {@link currentExpression}.
      */
     restoreExpression(): void {
-        this._setExpression(this.currentExpression);
+        this.currentExpressionHandle = this._setExpression(this.currentExpression);
+    }
+
+    /**
+     * Unsets the current expression by fading it out.
+     * @return true if the expression was successfully unset, false otherwise
+     */
+    unsetExpression(): boolean {
+        if (this.currentExpressionHandle !== -1) {
+            const success = this._fadeOutExpression();
+            if (success) {
+                this.currentExpressionHandle = -1;
+                this.currentExpression = this.defaultExpression;
+            }
+            return success;
+        }
+        return false;
+    }
+
+    /**
+     * Unsets a specific expression by index or name.
+     * @param index - Either the index, or the name of the expression to unset
+     * @return true if the expression was successfully unset, false otherwise
+     */
+    async unsetSpecificExpression(index: number | string): Promise<boolean> {
+        if (typeof index !== "number") {
+            index = this.getExpressionIndex(index);
+        }
+
+        if (!(index > -1 && index < this.definitions.length)) {
+            return false;
+        }
+
+        const success = await this._fadeOutSpecificExpression(index);
+
+        // If this was the current expression, reset the state
+        if (success && this.expressions[index] === this.currentExpression) {
+            this.currentExpression = this.defaultExpression;
+            this.currentExpressionHandle = -1;
+        }
+
+
+
+        return success;
     }
 
     /**
@@ -169,7 +218,10 @@ export abstract class ExpressionManager<
             return false;
         }
 
-        if (index === this.expressions.indexOf(this.currentExpression)) {
+        // Check if we're trying to set the same expression that's already active
+        // But allow setting an expression if it was previously unset
+        const currentExpressionIndex = this.expressions.indexOf(this.currentExpression);
+        if (index === currentExpressionIndex && this.currentExpression !== this.defaultExpression) {
             return false;
         }
 
@@ -183,7 +235,7 @@ export abstract class ExpressionManager<
 
         this.reserveExpressionIndex = -1;
         this.currentExpression = expression;
-        this._setExpression(expression);
+        this.currentExpressionHandle = this._setExpression(expression);
 
         return true;
     }
@@ -242,6 +294,19 @@ export abstract class ExpressionManager<
      * Applies the Expression to the model.
      */
     protected abstract _setExpression(motion: Expression): number;
+
+    /**
+     * Fades out the current expression.
+     * @return true if the expression was successfully faded out, false otherwise
+     */
+    protected abstract _fadeOutExpression(): boolean;
+
+    /**
+     * Fades out a specific expression by index.
+     * @param index - Index of the expression to fade out
+     * @return true if the expression was successfully faded out, false otherwise
+     */
+    protected abstract _fadeOutSpecificExpression(index: number): boolean;
 
     /**
      * Cancels expression playback.

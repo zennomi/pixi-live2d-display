@@ -14,6 +14,11 @@ export class Cubism4ExpressionManager extends ExpressionManager<
 
     readonly definitions: CubismSpec.Expression[];
 
+    /**
+     * Maps expression indices to their motion handles for efficient lookup
+     */
+    private expressionHandles: Map<number, number> = new Map();
+
     constructor(settings: Cubism4ModelSettings, options?: MotionManagerOptions) {
         super(settings, options);
 
@@ -39,14 +44,43 @@ export class Cubism4ExpressionManager extends ExpressionManager<
     }
 
     protected _setExpression(motion: CubismExpressionMotion): number {
-        return this.queueManager.startMotion(motion, false, performance.now());
+        const handle = this.queueManager.startMotion(motion, false, performance.now());
+
+        // Store the handle mapping for this expression
+        // We need to find the index of the expression we're setting, not the current one
+        const index = this.expressions.indexOf(motion);
+        if (index !== -1) {
+            this.expressionHandles.set(index, handle);
+        }
+
+        return handle;
     }
 
     protected stopAllExpressions(): void {
         this.queueManager.stopAllMotions();
+        this.expressionHandles.clear();
     }
 
     protected updateParameters(model: CubismModel, now: DOMHighResTimeStamp): boolean {
         return this.queueManager.doUpdateMotion(model, now);
+    }
+
+    protected _fadeOutExpression(): boolean {
+        return this.queueManager.fadeOutMotion(this.currentExpressionHandle);
+    }
+
+    protected _fadeOutSpecificExpression(index: number): boolean {
+        const handle = this.expressionHandles.get(index);
+        if (handle !== undefined) {
+            const success = this.queueManager.fadeOutMotion(handle);
+            if (success) {
+                this.expressionHandles.delete(index);
+
+                // Apply the default expression to reset parameters
+                this.queueManager.startMotion(this.defaultExpression, false, performance.now());
+            }
+            return success;
+        }
+        return false;
     }
 }

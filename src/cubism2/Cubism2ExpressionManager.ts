@@ -49,4 +49,24 @@ export class Cubism2ExpressionManager extends ExpressionManager<Live2DExpression
     protected updateParameters(model: Live2DModelWebGL, dt: number): boolean {
         return this.queueManager.updateParam(model);
     }
+
+    protected _fadeOutExpression(): boolean {
+        // For Cubism2, we can't directly fade out a specific motion
+        // So we stop all expressions and set the default expression
+        this.stopAllExpressions();
+        this.currentExpressionHandle = this._setExpression(this.defaultExpression);
+        return true;
+    }
+
+    protected _fadeOutSpecificExpression(index: number): boolean {
+        // For Cubism2, we can't directly fade out a specific motion
+        // So we stop all expressions and set the default expression
+        this.stopAllExpressions();
+        this.currentExpressionHandle = this._setExpression(this.defaultExpression);
+
+        // Reset the current expression state
+        this.currentExpression = this.defaultExpression;
+
+        return true;
+    }
 }
