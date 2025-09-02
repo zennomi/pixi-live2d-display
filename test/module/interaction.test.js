@@ -3,7 +3,7 @@ import { createApp, createModel } from '../utils';
 import { Application } from '@pixi/app';
 import { merge } from 'lodash-es';
 
-describe('Interactions', function() {
+describe('Interactions', function () {
     let app;
 
     const runtimes = merge({}, RUNTIMES, {
@@ -11,7 +11,7 @@ describe('Interactions', function() {
         cubism4: { model: undefined },
     });
 
-    before(async function() {
+    before(async function () {
         app = createApp(Application, false);
 
         await runtimes.each(async runtime => {
@@ -19,19 +19,24 @@ describe('Interactions', function() {
         });
     });
 
-    afterEach(function() {
+    afterEach(function () {
         app.stage.removeChildren();
     });
 
-    describe('should handle tapping', function() {
-        before(function() {
+    describe('should handle tapping', function () {
+        beforeEach(function () {
+            // re-add models to stage after they were removed in afterEach
+            runtimes.each(runtime => {
+                app.stage.addChild(runtime.model);
+            });
+
             // at least render the models once, otherwise hit-testing will always fail
             // because Live2DModelWebGL#getTransformedPoints will return an array of zeros
             app.render();
         });
 
         runtimes.each((runtime, name) => {
-            it(name, async function() {
+            it(name, async function () {
                 const listener = sinon.spy();
 
                 runtime.model.on('hit', listener);
@@ -53,7 +58,7 @@ describe('Interactions', function() {
         });
     });
 
-    it('should not unregister other models\' listeners when destroying a model', async function() {
+    it('should not unregister other models\' listeners when destroying a model', async function () {
         const model1 = await createModel(TEST_MODEL);
         const model2 = await createModel(TEST_MODEL);
 
