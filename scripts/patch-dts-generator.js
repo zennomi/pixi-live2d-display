@@ -1,9 +1,11 @@
-import dtsPackageJson from "dts-bundle-generator/package.json" assert { type: "json" };
 import { readFileSync, writeFileSync } from "fs";
 import { dirname, resolve } from "path";
 import { fileURLToPath } from "url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+const dtsPackageJson = JSON.parse(
+    readFileSync(resolve(__dirname, "../node_modules/dts-bundle-generator/package.json"), "utf8"),
+);
 
 const insertionLineNumber = 102;
 const insertionLineIndex = insertionLineNumber - 1;
