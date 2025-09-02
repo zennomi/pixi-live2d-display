@@ -1,15 +1,18 @@
-import { ModelSettings } from '@/cubism-common/ModelSettings';
-import { MotionManagerOptions } from '@/cubism-common/MotionManager';
-import { logger } from '@/utils';
-import { EventEmitter } from '@pixi/utils';
-import { ExpressionManagerEvents } from '../types/events';
-import { JSONObject, Mutable } from '../types/helpers';
+import type { ModelSettings } from "@/cubism-common/ModelSettings";
+import type { MotionManagerOptions } from "@/cubism-common/MotionManager";
+import { logger } from "@/utils";
+import * as utils from "@pixi/utils";
+import type { ExpressionManagerEvents } from "../types/events";
+import type { JSONObject, Mutable } from "../types/helpers";
 
 /**
  * Abstract expression manager.
  * @emits {@link ExpressionManagerEvents}
  */
-export abstract class ExpressionManager<Expression = any, ExpressionSpec = any> extends EventEmitter<keyof ExpressionManagerEvents> {
+export abstract class ExpressionManager<
+    Expression = any,
+    ExpressionSpec = any,
+> extends utils.EventEmitter<keyof ExpressionManagerEvents> {
     /**
      * Tag for logging.
      */
@@ -84,7 +87,10 @@ export abstract class ExpressionManager<Expression = any, ExpressionSpec = any> 
         }
 
         if (this.expressions[index] === null) {
-            logger.warn(this.tag, `Cannot set expression at [${index}] because it's already failed in loading.`);
+            logger.warn(
+                this.tag,
+                `Cannot set expression at [${index}] because it's already failed in loading.`,
+            );
             return undefined;
         }
 
@@ -103,8 +109,8 @@ export abstract class ExpressionManager<Expression = any, ExpressionSpec = any> 
      * Loads the Expression. Will be implemented by Live2DFactory in order to avoid circular dependency.
      * @ignore
      */
-     private _loadExpression(index: number): Promise<Expression | undefined> {
-        throw new Error('Not implemented.');
+    private _loadExpression(index: number): Promise<Expression | undefined> {
+        throw new Error("Not implemented.");
     }
 
     /**
@@ -117,9 +123,9 @@ export abstract class ExpressionManager<Expression = any, ExpressionSpec = any> 
 
             for (let i = 0; i < this.definitions.length; i++) {
                 if (
-                    this.expressions[i] !== null
-                    && this.expressions[i] !== this.currentExpression
-                    && i !== this.reserveExpressionIndex
+                    this.expressions[i] !== null &&
+                    this.expressions[i] !== this.currentExpression &&
+                    i !== this.reserveExpressionIndex
                 ) {
                     availableIndices.push(i);
                 }
@@ -139,23 +145,24 @@ export abstract class ExpressionManager<Expression = any, ExpressionSpec = any> 
      * Resets model's expression using {@link ExpressionManager#defaultExpression}.
      */
     resetExpression(): void {
-        this._setExpression(this.defaultExpression);
+        this.setExpression(-1);
     }
 
     /**
      * Restores model's expression to {@link currentExpression}.
      */
     restoreExpression(): void {
-        this._setExpression(this.currentExpression);
+        const index = this.expressions.indexOf(this.currentExpression);
+        this.setExpression(index);
     }
 
     /**
-     * Sets an Expression.
-     * @param index - Either the index, or the name of the expression.
-     * @return Promise that resolves with true if succeeded, with false otherwise.
+     * Unsets a specific expression by index or name.
+     * @param index - Either the index, or the name of the expression to unset
+     * @return true if the expression was successfully unset, false otherwise
      */
-    async setExpression(index: number | string): Promise<boolean> {
-        if (typeof index !== 'number') {
+    async unsetExpression(index: number | string): Promise<boolean> {
+        if (typeof index !== "number") {
             index = this.getExpressionIndex(index);
         }
 
@@ -163,21 +170,59 @@ export abstract class ExpressionManager<Expression = any, ExpressionSpec = any> 
             return false;
         }
 
-        if (index === this.expressions.indexOf(this.currentExpression)) {
+        const success = this._unsetExpression(index);
+
+        // If this was the current expression, reset the state
+        if (success && this.expressions[index] === this.currentExpression) {
+            this.currentExpression = this.defaultExpression;
+        }
+
+        return success;
+    }
+
+    /**
+     * Sets an Expression.
+     * @param index - Either the index, or the name of the expression. -1 is the default expression.
+     * @param overlapping - Whether to allow overlapping expression.
+     * @return Promise that resolves with true if succeeded, with false otherwise.
+     */
+    async setExpression(index: number | string, overlapping?: boolean): Promise<boolean> {
+        if (typeof index !== "number") {
+            index = this.getExpressionIndex(index);
+        }
+
+        if (!(index > -2 && index < this.definitions.length)) {
             return false;
         }
 
-        this.reserveExpressionIndex = index;
+        const expression =
+            index === -1
+                ? this.defaultExpression
+                : this.expressions[index] || (await this.loadExpression(index));
 
-        const expression = await this.loadExpression(index);
+        if (!overlapping) {
+            const currentExpressionIndex = this.expressions.indexOf(this.currentExpression);
+            if (index === currentExpressionIndex) {
+                return false;
+            }
 
-        if (!expression || this.reserveExpressionIndex !== index) {
+            this._unsetExpression(currentExpressionIndex);
+
+            this.reserveExpressionIndex = index;
+
+            if (!expression || this.reserveExpressionIndex !== index) {
+                return false;
+            }
+
+            this.reserveExpressionIndex = -1;
+            this.currentExpression = expression;
+        }
+
+        if (!expression) {
             return false;
         }
 
-        this.reserveExpressionIndex = -1;
-        this.currentExpression = expression;
-        this._setExpression(expression);
+        this._setExpression(expression, overlapping);
 
         return true;
     }
@@ -200,7 +245,7 @@ export abstract class ExpressionManager<Expression = any, ExpressionSpec = any> 
      */
     destroy() {
         this.destroyed = true;
-        this.emit('destroy');
+        this.emit("destroy");
 
         const self = this as Mutable<Partial<this>>;
         self.definitions = undefined;
@@ -234,8 +279,18 @@ export abstract class ExpressionManager<Expression = any, ExpressionSpec = any> 
 
     /**
      * Applies the Expression to the model.
+     * @param motion - The Expression to apply.
+     * @param overlapping - Whether to allow overlapping.
+     * @return The handle of the Expression.
      */
-    protected abstract _setExpression(motion: Expression): number;
+    protected abstract _setExpression(motion: Expression, overlapping?: boolean): number;
+
+    /**
+     * Fades out a specific expression by index.
+     * @param index - Index of the expression to fade out
+     * @return true if the expression was successfully faded out, false otherwise
+     */
+    protected abstract _unsetExpression(index: number): boolean;
 
     /**
      * Cancels expression playback.

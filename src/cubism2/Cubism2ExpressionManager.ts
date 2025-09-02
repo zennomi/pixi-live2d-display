@@ -1,8 +1,9 @@
-import { MotionManagerOptions } from '@/cubism-common';
-import { ExpressionManager } from '@/cubism-common/ExpressionManager';
-import { Cubism2ModelSettings } from '@/cubism2/Cubism2ModelSettings';
-import { Cubism2Spec } from '../types/Cubism2Spec';
-import { Live2DExpression } from './Live2DExpression';
+import type { MotionManagerOptions } from "@/cubism-common";
+import { ExpressionManager } from "@/cubism-common/ExpressionManager";
+import type { Cubism2ModelSettings } from "@/cubism2/Cubism2ModelSettings";
+import type { Cubism2Spec } from "../types/Cubism2Spec";
+import { Live2DExpression } from "./Live2DExpression";
+import { CubismLogWarning } from "@cubism/index";
 
 export class Cubism2ExpressionManager extends ExpressionManager<Live2DExpression> {
     readonly queueManager = new MotionQueueManager();
@@ -24,18 +25,25 @@ export class Cubism2ExpressionManager extends ExpressionManager<Live2DExpression
     }
 
     getExpressionIndex(name: string): number {
-        return this.definitions.findIndex(def => def.name === name);
+        return this.definitions.findIndex((def) => def.name === name);
     }
 
     getExpressionFile(definition: Cubism2Spec.Expression): string {
         return definition.file;
     }
 
-    createExpression(data: object, definition: Cubism2Spec.Expression | undefined): Live2DExpression {
+    createExpression(
+        data: object,
+        definition: Cubism2Spec.Expression | undefined,
+    ): Live2DExpression {
         return new Live2DExpression(data);
     }
 
-    protected _setExpression(motion: Live2DExpression): number {
+    protected _setExpression(motion: Live2DExpression, overlapping?: boolean): number {
+        if (overlapping) {
+            CubismLogWarning("Overlapping expression is not supported in Cubism2");
+        }
+
         return this.queueManager.startMotion(motion);
     }
 
@@ -45,5 +53,12 @@ export class Cubism2ExpressionManager extends ExpressionManager<Live2DExpression
 
     protected updateParameters(model: Live2DModelWebGL, dt: number): boolean {
         return this.queueManager.updateParam(model);
+    }
+
+    protected _unsetExpression(index: number): boolean {
+        // For Cubism2, we can't directly fade out a specific motion
+        // So we stop all expressions and set the default expression
+        this.stopAllExpressions();
+        return true;
     }
 }
